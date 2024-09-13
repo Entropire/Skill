@@ -1,69 +1,112 @@
 using System;
+using TMPro;
+using UnityEditor;
 using UnityEngine;
 
 public class Opdracht1 : MonoBehaviour
 {
+    public GameObject startUI;
+    public GameObject wonUI;
+    public TMP_Text timeText;
+
     public float acceleration;
     public float maxVelocity;
-    private float timePassed;
-    private Vector3 deraction;
     
     private Rigidbody rb;
     private Animator animator ;
-
-    private bool start;
     
+    private bool playing;
+    private bool isDead;
+    private bool won;
+    
+    private float time;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
-        deraction = new(1, 0, 0);
     }
 
     private void Update()
     {
         HandlePlayerInput();
         HandleAnimations();
-
-        if (start)
+        
+        if (!won && !isDead && Input.GetKeyDown(KeyCode.Space))
         {
-            timePassed += Time.deltaTime;
+            rb.velocity += Vector3.forward * acceleration;
+            
+            if(rb.velocity.magnitude > maxVelocity)
+            {
+                rb.velocity = rb.velocity.normalized * maxVelocity;
+            }
+        }
+        
+        if (playing && !isDead && !won)
+        {
+            startUI.SetActive(false);
+            time += Time.deltaTime;
+            timeText.text = time.ToString("0.00");
+        }
+
+        if (time > 8f)
+        {
+            isDead = true;
+            time = 0f;
+            wonUI.gameObject.SetActive(true);
+        }
+
+        if (rb.transform.position.z > 16)
+        {
+            won = true;
+            time = 0f;
+            wonUI.SetActive(true);
         }
     }
-
+    
     private void HandlePlayerInput()
     {
-        if (Input.GetKey(KeyCode.Space) && timePassed < 3f)
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            if(!start) start = true;
-            
-            if (rb.velocity.x < maxVelocity)
+            if (!playing && !isDead)
             {
-                rb.velocity += deraction * acceleration;
-                
-                if (rb.velocity.x > maxVelocity)
-                {
-                    rb.velocity -= deraction * maxVelocity;
-                }
+                playing = true;
+                animator.ResetTrigger("Idle");
             }
 
-            timePassed = 0f;
+            if (playing && won || isDead)
+            {
+                transform.position = new(0f,0f, -18f);
+                playing = false;
+                isDead = false;
+                won = false;
+                animator.SetTrigger("Idle");
+                animator.ResetTrigger("Death");
+                animator.ResetTrigger("Won");
+                wonUI.SetActive(false);
+                startUI.SetActive(true);
+            }
         }
     }
-
+    
     private void HandleAnimations()
     {
-        if (rb.velocity.x <= 0f && timePassed < 30f)
+        if (!won && !isDead && rb.velocity.z <= 0f)
         {
             animator.SetFloat("Run", 0f);
         }
-        else if (rb.velocity.x > 0f && timePassed < 30f)
+        else if (!won && !isDead && rb.velocity.z > 0f)
         {
             animator.SetFloat("Run", 1f);
         }
-        else if (timePassed >= 30f)
+        else if (!won && isDead)
         {
             animator.SetTrigger("Death");
         }
+        else if(won)
+        {
+            animator.SetTrigger("Won");
+        }
     }
 }
+
